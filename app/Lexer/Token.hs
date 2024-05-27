@@ -1,8 +1,7 @@
 module Lexer.Token where
 
 data Token
-  = ILLEGAL
-  | EOF
+  = EOF
   | -- identifiers + literals
     IDENT String
   | INT Int

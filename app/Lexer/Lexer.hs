@@ -5,55 +5,56 @@ import Common.Types
 import Data.Char (isAlpha, isDigit)
 import Lexer.Token
 
-advance :: LexerState ()
+advance :: ParserState ()
 advance = modify tail
 
-nextToken :: LexerState Token
+nextToken :: ParserState Token
 nextToken = do
   modify skipWhiteSpace
   input <- get
   if null input
     then return EOF
     else case head input of
-      '+' -> advance >> return PLUS
-      '-' -> advance >> return MINUS
-      '*' -> advance >> return ASTERISK
-      '/' -> advance >> return SLASH
-      '<' -> advance >> return LESS_THAN
-      '>' -> advance >> return GREATER_THAN
-      ',' -> advance >> return COMMA
-      ';' -> advance >> return SEMICOLON
-      '(' -> advance >> return LPAREN
-      ')' -> advance >> return RPAREN
-      '{' -> advance >> return LBRACE
-      '}' -> advance >> return RBRACE
-      '=' -> do
-        advance
-        isCurrentCharEquals <- getIsCurrentCharEquals <$> get
-        if isCurrentCharEquals
-          then advance >> return EQUAL_TO
-          else return ASSIGN
-      '!' -> do
-        advance
-        isCurrentCharEquals <- getIsCurrentCharEquals <$> get
-        if isCurrentCharEquals
-          then advance >> return NOT_EQUAL_TO
-          else return BANG
+      '+' -> readSingleChar PLUS
+      '-' -> readSingleChar MINUS
+      '*' -> readSingleChar ASTERISK
+      '/' -> readSingleChar SLASH
+      '<' -> readSingleChar LESS_THAN
+      '>' -> readSingleChar GREATER_THAN
+      ',' -> readSingleChar COMMA
+      ';' -> readSingleChar SEMICOLON
+      '(' -> readSingleChar LPAREN
+      ')' -> readSingleChar RPAREN
+      '{' -> readSingleChar LBRACE
+      '}' -> readSingleChar RBRACE
+      '=' -> readPeekEquals EQUAL_TO ASSIGN
+      '!' -> readPeekEquals NOT_EQUAL_TO BANG
       c
         | isLetter c -> readIdent
         | isDigit c -> readInt
-      _ -> advance >> return ILLEGAL
+      illegalChar -> interpreterError $ IllegalChar illegalChar
 
 isLetter :: Char -> Bool
 isLetter char = isAlpha char || char == '_'
 
+readSingleChar :: Token -> ParserState Token
+readSingleChar = (advance >>) . return
+
+readPeekEquals :: Token -> Token -> ParserState Token
+readPeekEquals tokenIfTrue tokenIfFalse = do
+  advance
+  input <- get
+  if not $ null input || head input /= '='
+    then advance >> return tokenIfTrue
+    else return tokenIfFalse
+
 getIsCurrentCharEquals :: Input -> Bool
 getIsCurrentCharEquals input = not $ null input || head input /= '='
 
-readInt :: LexerState Token
+readInt :: ParserState Token
 readInt = INT . read <$> seek isDigit
 
-readIdent :: LexerState Token
+readIdent :: ParserState Token
 readIdent = do
   ident <- seek isLetter
   case ident of
@@ -66,7 +67,7 @@ readIdent = do
     "false" -> return $ BOOL False
     _ -> return $ IDENT ident
 
-seek :: (Char -> Bool) -> LexerState Input
+seek :: (Char -> Bool) -> ParserState Input
 seek predicate = do
   input <- get
   let currentChar = head input
@@ -80,7 +81,7 @@ skipWhiteSpace input@(c : cs)
   | c == ' ' || c == '\t' || c == '\r' || c == '\n' = skipWhiteSpace cs
   | otherwise = input
 
-accumulateTokens :: LexerState [Token]
+accumulateTokens :: ParserState [Token]
 accumulateTokens = do
   token <- nextToken
   if token == EOF
@@ -88,5 +89,5 @@ accumulateTokens = do
     else
       (token :) <$> accumulateTokens
 
-lexInput :: Input -> [Token]
-lexInput = evalState accumulateTokens
+lexInput :: Input -> Either InterpreterError [Token]
+lexInput = evalStateT accumulateTokens

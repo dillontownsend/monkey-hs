@@ -51,6 +51,14 @@ instance Monad Identity where
   (>>=) :: Identity a -> (a -> Identity b) -> Identity b
   Identity a >>= f = f a
 
+class MonadTrans t where
+  lift :: (Monad m) => m a -> t m a
+
+instance MonadTrans (StateT s) where
+  lift ma = StateT $ \s -> do
+    a <- ma
+    return (a, s)
+
 type State s a = StateT s Identity a
 
 get :: (Monad m) => StateT s m s

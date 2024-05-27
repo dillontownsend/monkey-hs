@@ -1,4 +1,6 @@
 module Main where
 
+import Lexer.Lexer
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = readFile "app/main.monkey" >>= print . lexInput
