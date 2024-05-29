@@ -1,8 +1,8 @@
 module Parser.AST where
 
 data Statement
-  = LetStatement Identifier -- Expression
-  | ReturnStatement -- Expression
+  = LetStatement Identifier Expression
+  | ReturnStatement Expression
   | ExpressionStatement Expression
   deriving (Eq, Show)
 
@@ -14,10 +14,11 @@ data Expression
   | IntegerLiteral Int
   | PrefixExpression PrefixOperator Expression
   | InfixExpression Expression InfixOperator Expression
+  | BoolLiteral Bool
   deriving (Eq, Show)
 
 data PrefixOperator
-  = PrefixBang
+  = PrefixNot
   | PrefixNegative
   deriving (Eq, Show)
 

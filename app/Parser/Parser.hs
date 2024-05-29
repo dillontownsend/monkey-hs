@@ -3,7 +3,6 @@ module Parser.Parser where
 import Common.Trans.State
 import Common.Types
 import Control.Applicative (liftA2)
-import Control.Monad (unless)
 import Lexer.Lexer
 import Lexer.Token
 import Parser.AST
@@ -37,13 +36,24 @@ parseExpression leftBindingPower = do
   nud <- parseNud
   parseLed nud leftBindingPower
 
+parseNud :: ParserState Expression
+parseNud = do
+  token <- nextToken
+  case token of
+    IDENT ident -> return $ IdentifierExpression $ Identifier ident
+    INT int -> return $ IntegerLiteral int
+    BANG -> PrefixExpression PrefixNot <$> parseExpression PREFIX
+    MINUS -> PrefixExpression PrefixNegative <$> parseExpression PREFIX
+    BOOL bool -> return $ BoolLiteral bool
+    unexpectedToken -> interpreterError $ InvalidNud unexpectedToken
+
 parseLed :: Expression -> Precedence -> ParserState Expression
 parseLed leftExpression leftBindingPower = do
-  token <- nextToken
-  rightBindingPower <- lookupPrecedence token
+  peekToken <- peekNextToken
+  rightBindingPower <- lookupPrecedence peekToken
   if leftBindingPower < rightBindingPower
     then
-      liftA2 (InfixExpression leftExpression) (lookupInfixOperator token) (parseExpression rightBindingPower)
+      nextToken >> liftA2 (InfixExpression leftExpression) (lookupInfixOperator peekToken) (parseExpression rightBindingPower)
     else return leftExpression
 
 lookupInfixOperator :: Token -> ParserState InfixOperator
@@ -69,35 +79,27 @@ lookupPrecedence SLASH = return PRODUCT
 lookupPrecedence ASTERISK = return PRODUCT
 lookupPrecedence invalidToken = interpreterError $ PrecedenceNotFound invalidToken
 
-parseNud :: ParserState Expression
-parseNud = do
-  token <- nextToken
-  case token of
-    IDENT ident -> return $ IdentifierExpression $ Identifier ident
-    INT int -> return $ IntegerLiteral int
-    BANG -> PrefixExpression PrefixBang <$> parseExpression PREFIX
-    MINUS -> PrefixExpression PrefixNegative <$> parseExpression PREFIX
-    unexpectedToken -> interpreterError $ InvalidNud unexpectedToken
-
 parseLetStatement :: ParserState Statement
 parseLetStatement = do
   _letToken <- nextToken
-  token <- nextToken
-  case token of
+  identToken <- nextToken
+  case identToken of
     IDENT ident -> do
-      token' <- nextToken
-      case token' of
-        ASSIGN -> advanceToSemicolon >> return (LetStatement $ Identifier ident)
+      assignToken <- nextToken
+      case assignToken of
+        ASSIGN -> do
+          letStatement <- LetStatement (Identifier ident) <$> parseExpression INITIAL
+          _semicolonToken <- nextToken
+          return letStatement
         unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
     unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
 
 parseReturnStatement :: ParserState Statement
-parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
-
-advanceToSemicolon :: ParserState ()
-advanceToSemicolon = do
-  token <- nextToken
-  unless (token == SEMICOLON) advanceToSemicolon
+parseReturnStatement = do
+  _returnToken <- nextToken
+  returnStatement <- ReturnStatement <$> parseExpression INITIAL
+  _semicolonToken <- nextToken
+  return returnStatement
 
 peekNextToken :: ParserState Token
 peekNextToken = do
