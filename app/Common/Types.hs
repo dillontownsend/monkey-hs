@@ -15,6 +15,7 @@ data InterpreterError
   | InvalidNud Token
   | PrecedenceNotFound Token
   | NotAnInfixOperator Token
+  deriving (Eq)
 
 instance Show InterpreterError where
   show (IllegalChar char) = "illegal char: " ++ [char]
