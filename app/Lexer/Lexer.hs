@@ -57,15 +57,17 @@ readInt = INT . read <$> seek isDigit
 readIdent :: ParserState Token
 readIdent = do
   ident <- seek isLetter
-  case ident of
-    "fn" -> return FUNCTION
-    "let" -> return LET
-    "if" -> return IF
-    "else" -> return ELSE
-    "return" -> return RETURN
-    "true" -> return $ BOOL True
-    "false" -> return $ BOOL False
-    _ -> return $ IDENT ident
+  return
+    ( case ident of
+        "fn" -> FUNCTION
+        "let" -> LET
+        "if" -> IF
+        "else" -> ELSE
+        "return" -> RETURN
+        "true" -> BOOL True
+        "false" -> BOOL False
+        _ -> IDENT ident
+    )
 
 seek :: (Char -> Bool) -> ParserState Input
 seek predicate = do

@@ -12,10 +12,29 @@ newtype Identifier = Identifier String
 data Expression
   = IdentifierExpression Identifier
   | IntegerLiteral Int
+  | PrefixExpression PrefixOperator Expression
+  | InfixExpression Expression InfixOperator Expression
+  deriving (Eq, Show)
+
+data PrefixOperator
+  = PrefixBang
+  | PrefixNegative
+  deriving (Eq, Show)
+
+data InfixOperator
+  = InfixAdd
+  | InfixSubtract
+  | InfixMultiply
+  | InfixDivide
+  | InfixGreaterThan
+  | InfixLessThan
+  | InfixEqualTo
+  | InfixNotEqualTo
   deriving (Eq, Show)
 
 data Precedence
   = LOWEST
+  | INITIAL
   | EQUALS
   | LESSGREATER
   | SUM
