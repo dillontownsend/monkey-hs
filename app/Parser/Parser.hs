@@ -1,4 +1,4 @@
-module Parser.Parser where
+module Parser.Parser (parseInput) where
 
 import Common.Trans.State
 import Common.Types
@@ -43,12 +43,10 @@ parseExpressionStatement = do
   expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
   peekToken <- peekNextToken
   peekToken2 <- peekNextToken2
-  if peekToken /= SEMICOLON && peekToken2 /= SEMICOLON
-    then interpreterError MissingSemicolon
-    else
-      if peekToken2 == SEMICOLON -- TODO: clean this up
-        then nextToken >> return expressionStatement
-        else return expressionStatement
+  case (peekToken, peekToken2) of
+    (_, SEMICOLON) -> nextToken >> return expressionStatement
+    (SEMICOLON, _) -> return expressionStatement
+    (_, _) -> interpreterError MissingSemicolon
 
 parseExpression :: Precedence -> ParserState Expression
 parseExpression rightBindingPower = do
@@ -62,6 +60,10 @@ parseNud = do
   case token of
     IDENT ident -> return $ IdentifierExpression $ Identifier ident
     INT int -> return $ IntegerLiteral int
+    MINUS -> PrefixExpression PrefixNegative <$> parseExpression PREFIX
+    BANG -> PrefixExpression PrefixNot <$> parseExpression PREFIX
+    BOOL bool -> return $ BoolLiteral bool
+    invalidToken -> interpreterError $ InvalidNud invalidToken
 
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do

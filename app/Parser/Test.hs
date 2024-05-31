@@ -92,3 +92,39 @@ testParseInput = hspec $ do
         let input = "5"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
+
+    describe "prefix expressions" $ do
+      it "single correct negative parse" $ do
+        let input = "-5;"
+            expected = Right [ExpressionStatement $ PrefixExpression PrefixNegative $ IntegerLiteral 5]
+        parseInput input `shouldBe` expected
+      it "multiple correct negative parse" $ do
+        let input = "-5; -6; -7;"
+            expected =
+              Right
+                [ ExpressionStatement $ PrefixExpression PrefixNegative $ IntegerLiteral 5,
+                  ExpressionStatement $ PrefixExpression PrefixNegative $ IntegerLiteral 6,
+                  ExpressionStatement $ PrefixExpression PrefixNegative $ IntegerLiteral 7
+                ]
+        parseInput input `shouldBe` expected
+      it "single correct not parse" $ do
+        let input = "!true;"
+            expected = Right [ExpressionStatement $ PrefixExpression PrefixNot $ BoolLiteral True]
+        parseInput input `shouldBe` expected
+      it "multiple correct not parse" $ do
+        let input = "!true; !false; !true;"
+            expected =
+              Right
+                [ ExpressionStatement $ PrefixExpression PrefixNot $ BoolLiteral True,
+                  ExpressionStatement $ PrefixExpression PrefixNot $ BoolLiteral False,
+                  ExpressionStatement $ PrefixExpression PrefixNot $ BoolLiteral True
+                ]
+        parseInput input `shouldBe` expected
+      it "missing expression" $ do
+        let input = "!;"
+            expected = Left $ InvalidNud SEMICOLON
+        parseInput input `shouldBe` expected
+      it "missing semicolon" $ do
+        let input = "!true"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
