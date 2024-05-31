@@ -1,8 +1,8 @@
 module Parser.AST where
 
 data Statement
-  = LetStatement Identifier Expression
-  | ReturnStatement Expression
+  = LetStatement Identifier -- Expression
+  | ReturnStatement -- Expression
   | ExpressionStatement Expression
   deriving (Eq, Show)
 

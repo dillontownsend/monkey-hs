@@ -28,6 +28,7 @@ testLexInput = do
                   EOF
                 ]
         lexInput input `shouldBe` expected
+
       it "peek equals" $ do
         let input = "===!=!"
             expected =
@@ -39,6 +40,7 @@ testLexInput = do
                   EOF
                 ]
         lexInput input `shouldBe` expected
+
       it "idents" $ do
         let input = "fn let if else return true false dillon"
             expected =
@@ -54,6 +56,7 @@ testLexInput = do
                   EOF
                 ]
         lexInput input `shouldBe` expected
+
       it "int" $ do
         let input = "15"
             expected =
@@ -62,7 +65,13 @@ testLexInput = do
                   EOF
                 ]
         lexInput input `shouldBe` expected
+
       it "illegal char" $ do
         let input = "$"
             expected = Left $ IllegalChar '$'
+        lexInput input `shouldBe` expected
+
+      it "empty file" $ do
+        let input = ""
+            expected = Right [EOF]
         lexInput input `shouldBe` expected
