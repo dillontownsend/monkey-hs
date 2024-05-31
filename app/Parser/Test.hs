@@ -22,3 +22,9 @@ testParseInput = hspec $ do
         let input = "let x 5;"
             expected = Left $ UnexpectedToken $ INT 5
         parseInput input `shouldBe` expected
+
+    describe "return statement" $ do
+      it "correct parse" $ do
+        let input = "return 5;"
+            expected = Right [ReturnStatement]
+        parseInput input `shouldBe` expected

@@ -20,6 +20,7 @@ parseStatement = do
   token <- nextToken
   case token of
     LET -> parseLetStatement
+    RETURN -> parseReturnStatement
 
 parseLetStatement :: ParserState Statement
 parseLetStatement = do
@@ -31,6 +32,9 @@ parseLetStatement = do
         ASSIGN -> advanceToSemicolon >> return (LetStatement $ Identifier ident)
         unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
     unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
+
+parseReturnStatement :: ParserState Statement
+parseReturnStatement = advanceToSemicolon >> return ReturnStatement
 
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do
