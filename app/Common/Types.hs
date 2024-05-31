@@ -15,6 +15,7 @@ data InterpreterError
   | InvalidNud Token
   | PrecedenceNotFound Token
   | NotAnInfixOperator Token
+  | MissingSemicolon
   deriving (Eq)
 
 instance Show InterpreterError where
@@ -23,6 +24,7 @@ instance Show InterpreterError where
   show (InvalidNud token) = "no nud for token: " ++ show token
   show (PrecedenceNotFound token) = "could not find precedence for token: " ++ show token
   show (NotAnInfixOperator token) = "expected a semicolon but instead recieved: " ++ show token
+  show MissingSemicolon = "missing a semicolon"
 
 interpreterError :: InterpreterError -> ParserState a
 interpreterError = lift . Left

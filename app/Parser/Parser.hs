@@ -41,10 +41,14 @@ parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
 parseExpressionStatement :: ParserState Statement
 parseExpressionStatement = do
   expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
-  peekToken2 <- peekNextToken2 -- TODO: check peekToken AND peekToken2. if neither are SEMICOLON, there is a missing SEMICOLON error
-  if peekToken2 == SEMICOLON
-    then nextToken >> return expressionStatement
-    else return expressionStatement
+  peekToken <- peekNextToken
+  peekToken2 <- peekNextToken2
+  if peekToken /= SEMICOLON && peekToken2 /= SEMICOLON
+    then interpreterError MissingSemicolon
+    else
+      if peekToken2 == SEMICOLON -- TODO: clean this up
+        then nextToken >> return expressionStatement
+        else return expressionStatement
 
 parseExpression :: Precedence -> ParserState Expression
 parseExpression rightBindingPower = do
@@ -62,7 +66,9 @@ parseNud = do
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do
   peekToken <- peekNextToken
-  unless (peekToken == SEMICOLON) (nextToken >> advanceToSemicolon)
+  if peekToken == EOF
+    then interpreterError MissingSemicolon
+    else unless (peekToken == SEMICOLON) (nextToken >> advanceToSemicolon)
 
 peekNextToken :: ParserState Token
 peekNextToken = do
