@@ -28,3 +28,15 @@ testParseInput = hspec $ do
         let input = "return 5;"
             expected = Right [ReturnStatement]
         parseInput input `shouldBe` expected
+
+    describe "identifier expression" $ do
+      it "correct parse" $ do
+        let input = "x;"
+            expected = Right [ExpressionStatement $ IdentifierExpression $ Identifier "x"]
+        parseInput input `shouldBe` expected
+
+    describe "integer literal" $ do
+      it "correct parse" $ do
+        let input = "5;"
+            expected = Right [ExpressionStatement $ IntegerLiteral 5]
+        parseInput input `shouldBe` expected

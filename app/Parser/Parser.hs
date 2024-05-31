@@ -17,13 +17,15 @@ parseProgram = do
 
 parseStatement :: ParserState Statement
 parseStatement = do
-  token <- nextToken
-  case token of
+  peekToken <- peekNextToken
+  case peekToken of
     LET -> parseLetStatement
     RETURN -> parseReturnStatement
+    _ -> parseExpressionStatement
 
 parseLetStatement :: ParserState Statement
 parseLetStatement = do
+  _letToken <- nextToken
   identToken <- nextToken
   case identToken of
     IDENT ident -> do
@@ -34,7 +36,28 @@ parseLetStatement = do
     unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
 
 parseReturnStatement :: ParserState Statement
-parseReturnStatement = advanceToSemicolon >> return ReturnStatement
+parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
+
+parseExpressionStatement :: ParserState Statement
+parseExpressionStatement = do
+  expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
+  peekToken2 <- peekNextToken2 -- TODO: check peekToken AND peekToken2. if neither are SEMICOLON, there is a missing SEMICOLON error
+  if peekToken2 == SEMICOLON
+    then nextToken >> return expressionStatement
+    else return expressionStatement
+
+parseExpression :: Precedence -> ParserState Expression
+parseExpression rightBindingPower = do
+  nud <- parseNud
+  let left = nud
+  return nud
+
+parseNud :: ParserState Expression
+parseNud = do
+  token <- nextToken
+  case token of
+    IDENT ident -> return $ IdentifierExpression $ Identifier ident
+    INT int -> return $ IntegerLiteral int
 
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do
@@ -47,6 +70,14 @@ peekNextToken = do
   token <- nextToken
   put currentInput
   return token
+
+peekNextToken2 :: ParserState Token
+peekNextToken2 = do
+  currentInput <- get
+  _token1 <- nextToken
+  token2 <- nextToken
+  put currentInput
+  return token2
 
 parseInput :: Input -> Either InterpreterError Program
 parseInput = evalStateT parseProgram

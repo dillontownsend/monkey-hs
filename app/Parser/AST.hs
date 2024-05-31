@@ -35,7 +35,6 @@ data InfixOperator
 
 data Precedence
   = LOWEST
-  | INITIAL
   | EQUALS
   | LESSGREATER
   | SUM
