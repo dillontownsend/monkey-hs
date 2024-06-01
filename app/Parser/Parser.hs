@@ -44,15 +44,14 @@ parseExpressionStatement = do
   peekToken <- peekNextToken
   peekToken2 <- peekNextToken2
   case (peekToken, peekToken2) of
-    (_, SEMICOLON) -> nextToken >> return expressionStatement
-    (SEMICOLON, _) -> return expressionStatement
-    (_, _) -> interpreterError MissingSemicolon
+    -- (_, SEMICOLON) -> nextToken >> return expressionStatement -- TODO: what is this for?
+    (EOF, _) -> interpreterError MissingSemicolon
+    (_, _) -> return expressionStatement
 
 parseExpression :: Precedence -> ParserState Expression
-parseExpression rightBindingPower = do
+parseExpression leftBindingPower = do
   nud <- parseNud
-  let left = nud
-  return nud
+  parseLed nud leftBindingPower
 
 parseNud :: ParserState Expression
 parseNud = do
@@ -86,6 +85,60 @@ peekNextToken2 = do
   token2 <- nextToken
   put currentInput
   return token2
+
+parseLed :: Expression -> Precedence -> ParserState Expression
+parseLed leftExpression leftBindingPower = do
+  peekToken <- peekNextToken
+  let rightBindingPower = lookupPrecedence peekToken
+  peekToken2 <- peekNextToken2
+  if peekToken2 /= SEMICOLON && leftBindingPower < rightBindingPower
+    then case lookupInfixParseFunction peekToken of
+      Nothing -> return leftExpression
+      Just infixParseFunction -> do
+        advancedLeftExpression <- infixParseFunction leftExpression
+        parseLed advancedLeftExpression leftBindingPower
+    else return leftExpression
+
+parseInfixExpression :: Expression -> ParserState Expression
+parseInfixExpression leftExpression = do
+  operatorToken <- nextToken
+  liftA2
+    (InfixExpression leftExpression)
+    (lookupInfixOperator operatorToken)
+    (parseExpression $ lookupPrecedence operatorToken)
+
+lookupInfixParseFunction :: Token -> Maybe (Expression -> ParserState Expression)
+lookupInfixParseFunction PLUS = Just parseInfixExpression
+lookupInfixParseFunction MINUS = Just parseInfixExpression
+lookupInfixParseFunction SLASH = Just parseInfixExpression
+lookupInfixParseFunction ASTERISK = Just parseInfixExpression
+lookupInfixParseFunction EQUAL_TO = Just parseInfixExpression
+lookupInfixParseFunction NOT_EQUAL_TO = Just parseInfixExpression
+lookupInfixParseFunction LESS_THAN = Just parseInfixExpression
+lookupInfixParseFunction GREATER_THAN = Just parseInfixExpression
+lookupInfixParseFunction _ = Nothing
+
+lookupInfixOperator :: Token -> ParserState InfixOperator
+lookupInfixOperator PLUS = return InfixAdd
+lookupInfixOperator MINUS = return InfixSubtract
+lookupInfixOperator ASTERISK = return InfixMultiply
+lookupInfixOperator SLASH = return InfixDivide
+lookupInfixOperator GREATER_THAN = return InfixGreaterThan
+lookupInfixOperator LESS_THAN = return InfixLessThan
+lookupInfixOperator EQUAL_TO = return InfixEqualTo
+lookupInfixOperator NOT_EQUAL_TO = return InfixNotEqualTo
+lookupInfixOperator invalidToken = interpreterError $ NotAnInfixOperator invalidToken
+
+lookupPrecedence :: Token -> Precedence
+lookupPrecedence EQUAL_TO = EQUALS
+lookupPrecedence NOT_EQUAL_TO = EQUALS
+lookupPrecedence LESS_THAN = LESSGREATER
+lookupPrecedence GREATER_THAN = LESSGREATER
+lookupPrecedence PLUS = SUM
+lookupPrecedence MINUS = SUM
+lookupPrecedence SLASH = PRODUCT
+lookupPrecedence ASTERISK = PRODUCT
+lookupPrecedence _ = LOWEST
 
 parseInput :: Input -> Either InterpreterError Program
 parseInput = evalStateT parseProgram
