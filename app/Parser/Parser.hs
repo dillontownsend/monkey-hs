@@ -62,7 +62,16 @@ parseNud = do
     MINUS -> PrefixExpression PrefixNegative <$> parseExpression PREFIX
     BANG -> PrefixExpression PrefixNot <$> parseExpression PREFIX
     BOOL bool -> return $ BoolLiteral bool
+    LPAREN -> parseGroupedExpression
     invalidToken -> interpreterError $ InvalidNud invalidToken
+
+parseGroupedExpression :: ParserState Expression
+parseGroupedExpression = do
+  expression <- parseExpression LOWEST
+  peekToken <- peekNextToken
+  if peekToken == RPAREN
+    then nextToken >> return expression
+    else interpreterError $ UnexpectedToken peekToken
 
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do

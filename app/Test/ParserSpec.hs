@@ -31,7 +31,7 @@ parserSpec = do
         let input = "let x 5;"
             expected = Left $ UnexpectedToken $ INT 5
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "let x = 5"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
@@ -50,7 +50,7 @@ parserSpec = do
                   ReturnStatement
                 ]
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "return 5"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
@@ -69,7 +69,7 @@ parserSpec = do
                   ExpressionStatement $ IdentifierExpression $ Identifier "z"
                 ]
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "x"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
@@ -88,7 +88,7 @@ parserSpec = do
                   ExpressionStatement $ IntegerLiteral 7
                 ]
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "5"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
@@ -124,7 +124,7 @@ parserSpec = do
         let input = "!;"
             expected = Left $ InvalidNud SEMICOLON
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "!true"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
@@ -222,7 +222,61 @@ parserSpec = do
                       (IdentifierExpression $ Identifier "d")
                 ]
         parseInput input `shouldBe` expected
-      it "missing semicolon" $ do
+      it "missing SEMICOLON" $ do
         let input = "2 + 2"
             expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
+
+    describe "grouped expressions" $ do
+      it "single correct parse" $ do
+        let input = "(2);"
+            expected = Right [ExpressionStatement $ IntegerLiteral 2]
+        parseInput input `shouldBe` expected
+      it "multiple correct parse" $ do
+        let input = "(2); (a); (false);"
+            expected =
+              Right
+                [ ExpressionStatement $ IntegerLiteral 2,
+                  ExpressionStatement $ IdentifierExpression $ Identifier "a",
+                  ExpressionStatement $ BoolLiteral False
+                ]
+        parseInput input `shouldBe` expected
+      it "missing RPAREN" $ do
+        let input = "(2;"
+            expected = Left $ UnexpectedToken SEMICOLON
+        parseInput input `shouldBe` expected
+      it "missing SEMICOLON" $ do
+        let input = "(2)"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
+
+    describe "complex statements" $ do
+      it "test 1" $ do
+        let input = "2; a + b * c + d; 1 == (2 + 3); return -(2 + 2);"
+            expected =
+              Right
+                [ ExpressionStatement $ IntegerLiteral 2,
+                  ExpressionStatement $
+                    InfixExpression
+                      ( InfixExpression
+                          ( IdentifierExpression $
+                              Identifier
+                                "a"
+                          )
+                          InfixAdd
+                          ( InfixExpression
+                              (IdentifierExpression $ Identifier "b")
+                              InfixMultiply
+                              (IdentifierExpression $ Identifier "c")
+                          )
+                      )
+                      InfixAdd
+                      (IdentifierExpression $ Identifier "d"),
+                  ExpressionStatement $
+                    InfixExpression
+                      (IntegerLiteral 1)
+                      InfixEqualTo
+                      (InfixExpression (IntegerLiteral 2) InfixAdd (IntegerLiteral 3)),
+                  ReturnStatement
+                ]
         parseInput input `shouldBe` expected
