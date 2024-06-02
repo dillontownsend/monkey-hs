@@ -15,7 +15,10 @@ data Expression
   | PrefixExpression PrefixOperator Expression
   | InfixExpression Expression InfixOperator Expression
   | BoolLiteral Bool
+  | IfExpression Expression Block (Maybe Block)
   deriving (Eq, Show)
+
+type Block = [Statement]
 
 data PrefixOperator
   = PrefixNot

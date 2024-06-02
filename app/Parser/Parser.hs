@@ -8,7 +8,7 @@ import Lexer.Lexer (nextToken)
 import Lexer.Token
 import Parser.AST
 
-parseProgram :: ParserState [Statement]
+parseProgram :: ParserState Program
 parseProgram = do
   peekToken <- peekNextToken
   if peekToken == EOF
@@ -63,7 +63,34 @@ parseNud = do
     BANG -> PrefixExpression PrefixNot <$> parseExpression PREFIX
     BOOL bool -> return $ BoolLiteral bool
     LPAREN -> parseGroupedExpression
+    IF -> parseIfExpression
     invalidToken -> interpreterError $ InvalidNud invalidToken
+
+parseIfExpression :: ParserState Expression
+parseIfExpression = do
+  expectNextToken LPAREN
+  condition <- parseExpression LOWEST
+  expectNextToken RPAREN
+  expectNextToken LBRACE
+  consequence <- parseBlock
+  expectNextToken RBRACE
+  peekToken <- peekNextToken
+  let ifExpressionBeforeConsequence = IfExpression condition consequence
+  if peekToken == ELSE
+    then do
+      _elseToken <- nextToken
+      expectNextToken LBRACE
+      alternative <- parseBlock
+      expectNextToken RBRACE
+      return $ ifExpressionBeforeConsequence $ Just alternative
+    else return $ ifExpressionBeforeConsequence Nothing
+
+parseBlock :: ParserState Block
+parseBlock = do
+  peekToken <- peekNextToken
+  if peekToken /= RBRACE && peekToken /= EOF
+    then liftA2 (:) (parseStatement <* nextToken) parseBlock
+    else return []
 
 parseGroupedExpression :: ParserState Expression
 parseGroupedExpression = do
@@ -148,6 +175,13 @@ lookupPrecedence MINUS = SUM
 lookupPrecedence SLASH = PRODUCT
 lookupPrecedence ASTERISK = PRODUCT
 lookupPrecedence _ = LOWEST
+
+expectNextToken :: Token -> ParserState ()
+expectNextToken expectedToken = do
+  token <- nextToken
+  if token == expectedToken
+    then return ()
+    else interpreterError $ UnexpectedToken token
 
 parseInput :: Input -> Either InterpreterError Program
 parseInput = evalStateT parseProgram

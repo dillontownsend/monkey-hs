@@ -249,6 +249,53 @@ parserSpec = do
         let input = "(2)"
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
+      it "complex grouped expression" $ do
+        let input = "((1 + (2 + 3)) + 4);"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    InfixExpression
+                      ( InfixExpression
+                          (IntegerLiteral 1)
+                          InfixAdd
+                          (InfixExpression (IntegerLiteral 2) InfixAdd (IntegerLiteral 3))
+                      )
+                      InfixAdd
+                      (IntegerLiteral 4)
+                ]
+        parseInput input `shouldBe` expected
+
+    describe "if expressions" $ do
+      it "if expression without alternative" $ do
+        let input = "if (true) { x; };"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    IfExpression
+                      (BoolLiteral True)
+                      [ExpressionStatement $ IdentifierExpression $ Identifier "x"]
+                      Nothing
+                ]
+        parseInput input `shouldBe` expected
+      it "if expression with alternative" $ do
+        let input = "if (true) { x; } else { y; };"
+            expected =
+              Right
+                [ ExpressionStatement
+                    $ IfExpression
+                      (BoolLiteral True)
+                      [ExpressionStatement $ IdentifierExpression $ Identifier "x"]
+                    $ Just [ExpressionStatement $ IdentifierExpression $ Identifier "y"]
+                ]
+        parseInput input `shouldBe` expected
+      it "if expression without alternative missing SEMICOLON" $ do
+        let input = "if (true) { x; }"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
+      it "if expression with alternative missing SEMICOLON" $ do
+        let input = "if (true) { x; } else { y; }"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
 
     describe "complex statements" $ do
       it "test 1" $ do
