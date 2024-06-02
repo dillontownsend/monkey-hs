@@ -26,14 +26,9 @@ parseStatement = do
 parseLetStatement :: ParserState Statement
 parseLetStatement = do
   _letToken <- nextToken
-  identToken <- nextToken
-  case identToken of
-    IDENT ident -> do
-      assignToken <- nextToken
-      case assignToken of
-        ASSIGN -> advanceToSemicolon >> return (LetStatement $ Identifier ident)
-        unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
-    unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
+  ident <- expectIdent
+  expectNextToken ASSIGN
+  advanceToSemicolon >> return (LetStatement $ Identifier ident)
 
 parseReturnStatement :: ParserState Statement
 parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
@@ -42,11 +37,9 @@ parseExpressionStatement :: ParserState Statement
 parseExpressionStatement = do
   expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
   peekToken <- peekNextToken
-  peekToken2 <- peekNextToken2
-  case (peekToken, peekToken2) of
-    -- (_, SEMICOLON) -> nextToken >> return expressionStatement -- TODO: what is this for?
-    (EOF, _) -> interpreterError MissingSemicolon
-    (_, _) -> return expressionStatement
+  case peekToken of
+    EOF -> interpreterError MissingSemicolon
+    _ -> return expressionStatement
 
 parseExpression :: Precedence -> ParserState Expression
 parseExpression leftBindingPower = do
@@ -93,12 +86,7 @@ parseBlock = do
     else return []
 
 parseGroupedExpression :: ParserState Expression
-parseGroupedExpression = do
-  expression <- parseExpression LOWEST
-  peekToken <- peekNextToken
-  if peekToken == RPAREN
-    then nextToken >> return expression
-    else interpreterError $ UnexpectedToken peekToken
+parseGroupedExpression = parseExpression LOWEST <* expectNextToken RPAREN
 
 advanceToSemicolon :: ParserState ()
 advanceToSemicolon = do
@@ -182,6 +170,13 @@ expectNextToken expectedToken = do
   if token == expectedToken
     then return ()
     else interpreterError $ UnexpectedToken token
+
+expectIdent :: ParserState String
+expectIdent = do
+  token <- nextToken
+  case token of
+    IDENT ident -> return ident
+    unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
 
 parseInput :: Input -> Either InterpreterError Program
 parseInput = evalStateT parseProgram
