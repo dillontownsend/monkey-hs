@@ -1,4 +1,4 @@
-module Lexer.Lexer where
+module Lexer.Lexer (lexInput, nextToken) where
 
 import Common.Trans.State
 import Common.Types
@@ -47,9 +47,6 @@ readPeekEquals tokenIfTrue tokenIfFalse = do
   if not $ null input || head input /= '='
     then advance >> return tokenIfTrue
     else return tokenIfFalse
-
-getIsCurrentCharEquals :: Input -> Bool
-getIsCurrentCharEquals input = not $ null input || head input /= '='
 
 readInt :: ParserState Token
 readInt = INT . read <$> seek isDigit
