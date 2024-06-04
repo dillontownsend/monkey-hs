@@ -37,9 +37,9 @@ parseExpressionStatement :: ParserState Statement
 parseExpressionStatement = do
   expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
   peekToken <- peekNextToken
-  case peekToken of
-    EOF -> interpreterError MissingSemicolon
-    _ -> return expressionStatement
+  if peekToken == SEMICOLON
+    then return expressionStatement
+    else interpreterError MissingSemicolon
 
 parseExpression :: Precedence -> ParserState Expression
 parseExpression leftBindingPower = do
@@ -57,7 +57,30 @@ parseNud = do
     BOOL bool -> return $ BoolLiteral bool
     LPAREN -> parseGroupedExpression
     IF -> parseIfExpression
+    FUNCTION -> parseFunctionLiteral
     invalidToken -> interpreterError $ InvalidNud invalidToken
+
+parseFunctionLiteral :: ParserState Expression
+parseFunctionLiteral = do
+  expectNextToken LPAREN
+  parameters <- parseFunctionParameters
+  expectNextToken LBRACE
+  body <- parseBlock
+  expectNextToken RBRACE
+  return $ FunctionLiteral parameters body
+
+parseFunctionParameters :: ParserState [Identifier]
+parseFunctionParameters = do
+  token <- nextToken
+  case token of
+    RPAREN -> return []
+    IDENT ident -> do
+      peekToken <- peekNextToken
+      let identifiers = (Identifier ident :) <$> parseFunctionParameters
+      if peekToken == COMMA
+        then nextToken >> identifiers
+        else identifiers
+    unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
 
 parseIfExpression :: ParserState Expression
 parseIfExpression = do

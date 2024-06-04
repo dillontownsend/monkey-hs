@@ -16,6 +16,7 @@ data Expression
   | InfixExpression Expression InfixOperator Expression
   | BoolLiteral Bool
   | IfExpression Expression Block (Maybe Block)
+  | FunctionLiteral [Identifier] Block
   deriving (Eq, Show)
 
 type Block = [Statement]

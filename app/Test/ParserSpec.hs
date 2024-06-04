@@ -297,6 +297,31 @@ parserSpec = do
             expected = Left MissingSemicolon
         parseInput input `shouldBe` expected
 
+    describe "function literal" $ do
+      it "correct single parse" $ do
+        let input = "fn(x, y) { x + y; };"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    FunctionLiteral
+                      [Identifier "x", Identifier "y"]
+                      [ ExpressionStatement $
+                          InfixExpression
+                            (IdentifierExpression $ Identifier "x")
+                            InfixAdd
+                            (IdentifierExpression $ Identifier "y")
+                      ]
+                ]
+        parseInput input `shouldBe` expected
+      it "missing outer SEMICOLON" $ do
+        let input = "fn(x, y) { x + y; }"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
+      it "missing inner SEMICOLON" $ do
+        let input = "fn(x, y) { x + y };"
+            expected = Left MissingSemicolon
+        parseInput input `shouldBe` expected
+
     describe "complex statements" $ do
       it "test 1" $ do
         let input = "2; a + b * c + d; 1 == (2 + 3); return -(2 + 2);"
