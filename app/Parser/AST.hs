@@ -16,7 +16,17 @@ data Expression
   | InfixExpression Expression InfixOperator Expression
   | BoolLiteral Bool
   | IfExpression Expression Block (Maybe Block)
-  | FunctionLiteral [Identifier] Block
+  | FunctionLiteralExpression FunctionLiteral
+  | CallExpression Function [Expression]
+  deriving (Eq, Show)
+
+data FunctionLiteral
+  = FunctionLiteral [Identifier] Block
+  deriving (Eq, Show)
+
+data Function
+  = NamedFunction Identifier
+  | AnonymousFunction FunctionLiteral
   deriving (Eq, Show)
 
 type Block = [Statement]

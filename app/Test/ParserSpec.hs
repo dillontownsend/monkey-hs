@@ -303,14 +303,15 @@ parserSpec = do
             expected =
               Right
                 [ ExpressionStatement $
-                    FunctionLiteral
-                      [Identifier "x", Identifier "y"]
-                      [ ExpressionStatement $
-                          InfixExpression
-                            (IdentifierExpression $ Identifier "x")
-                            InfixAdd
-                            (IdentifierExpression $ Identifier "y")
-                      ]
+                    FunctionLiteralExpression $
+                      FunctionLiteral
+                        [Identifier "x", Identifier "y"]
+                        [ ExpressionStatement $
+                            InfixExpression
+                              (IdentifierExpression $ Identifier "x")
+                              InfixAdd
+                              (IdentifierExpression $ Identifier "y")
+                        ]
                 ]
         parseInput input `shouldBe` expected
       it "missing outer SEMICOLON" $ do
@@ -350,5 +351,71 @@ parserSpec = do
                       InfixEqualTo
                       (InfixExpression (IntegerLiteral 2) InfixAdd (IntegerLiteral 3)),
                   ReturnStatement
+                ]
+        parseInput input `shouldBe` expected
+
+    describe "call expressions" $ do
+      it "precedence test 1" $ do
+        let input = "a + add(b * c) + d;"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    InfixExpression
+                      ( InfixExpression
+                          (IdentifierExpression $ Identifier "a")
+                          InfixAdd
+                          ( CallExpression
+                              (NamedFunction $ Identifier "add")
+                              [ InfixExpression
+                                  (IdentifierExpression $ Identifier "b")
+                                  InfixMultiply
+                                  (IdentifierExpression $ Identifier "c")
+                              ]
+                          )
+                      )
+                      InfixAdd
+                      (IdentifierExpression $ Identifier "d")
+                ]
+        parseInput input `shouldBe` expected
+      it "precedence test 2" $ do
+        let input = "((a + add((b * c))) + d);"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    InfixExpression
+                      ( InfixExpression
+                          (IdentifierExpression $ Identifier "a")
+                          InfixAdd
+                          ( CallExpression
+                              (NamedFunction $ Identifier "add")
+                              [ InfixExpression
+                                  (IdentifierExpression $ Identifier "b")
+                                  InfixMultiply
+                                  (IdentifierExpression $ Identifier "c")
+                              ]
+                          )
+                      )
+                      InfixAdd
+                      (IdentifierExpression $ Identifier "d")
+                ]
+        parseInput input `shouldBe` expected
+      it "many arguments" $ do
+        let input = "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8));"
+            expected =
+              Right
+                [ ExpressionStatement $
+                    CallExpression
+                      (NamedFunction $ Identifier "add")
+                      [ IdentifierExpression $ Identifier "a",
+                        IdentifierExpression $ Identifier "b",
+                        IntegerLiteral 1,
+                        InfixExpression (IntegerLiteral 2) InfixMultiply (IntegerLiteral 3),
+                        InfixExpression (IntegerLiteral 4) InfixAdd (IntegerLiteral 5),
+                        CallExpression
+                          (NamedFunction $ Identifier "add")
+                          [ IntegerLiteral 6,
+                            InfixExpression (IntegerLiteral 7) InfixMultiply (IntegerLiteral 8)
+                          ]
+                      ]
                 ]
         parseInput input `shouldBe` expected

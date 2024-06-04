@@ -60,6 +60,25 @@ parseNud = do
     FUNCTION -> parseFunctionLiteral
     invalidToken -> interpreterError $ InvalidNud invalidToken
 
+parseCallExpression :: Expression -> ParserState Expression
+parseCallExpression (FunctionLiteralExpression function) =
+  CallExpression (AnonymousFunction function) <$> (nextToken >> parseCallArguments)
+parseCallExpression (IdentifierExpression identifier) =
+  CallExpression (NamedFunction identifier) <$> (nextToken >> parseCallArguments)
+parseCallExpression _ = interpreterError $ UnexpectedToken LPAREN
+
+parseCallArguments :: ParserState [Expression]
+parseCallArguments = do
+  peekToken <- peekNextToken
+  if peekToken == RPAREN
+    then nextToken >> return []
+    else do
+      let expressions = liftA2 (:) (parseExpression LOWEST) parseCallArguments
+      peekToken' <- peekNextToken
+      if peekToken' == COMMA
+        then nextToken >> expressions
+        else expressions
+
 parseFunctionLiteral :: ParserState Expression
 parseFunctionLiteral = do
   expectNextToken LPAREN
@@ -67,7 +86,7 @@ parseFunctionLiteral = do
   expectNextToken LBRACE
   body <- parseBlock
   expectNextToken RBRACE
-  return $ FunctionLiteral parameters body
+  return $ FunctionLiteralExpression $ FunctionLiteral parameters body
 
 parseFunctionParameters :: ParserState [Identifier]
 parseFunctionParameters = do
@@ -163,6 +182,7 @@ lookupInfixParseFunction EQUAL_TO = Just parseInfixExpression
 lookupInfixParseFunction NOT_EQUAL_TO = Just parseInfixExpression
 lookupInfixParseFunction LESS_THAN = Just parseInfixExpression
 lookupInfixParseFunction GREATER_THAN = Just parseInfixExpression
+lookupInfixParseFunction LPAREN = Just parseCallExpression
 lookupInfixParseFunction _ = Nothing
 
 lookupInfixOperator :: Token -> ParserState InfixOperator
@@ -185,6 +205,7 @@ lookupPrecedence PLUS = SUM
 lookupPrecedence MINUS = SUM
 lookupPrecedence SLASH = PRODUCT
 lookupPrecedence ASTERISK = PRODUCT
+lookupPrecedence LPAREN = CALL
 lookupPrecedence _ = LOWEST
 
 expectNextToken :: Token -> ParserState ()
