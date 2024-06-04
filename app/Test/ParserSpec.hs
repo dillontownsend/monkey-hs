@@ -39,15 +39,15 @@ parserSpec = do
     describe "return statement" $ do
       it "single correct parse" $ do
         let input = "return 5;"
-            expected = Right [ReturnStatement]
+            expected = Right [ReturnStatement $ IntegerLiteral 5]
         parseInput input `shouldBe` expected
       it "multiple correct parse" $ do
         let input = "return 5; return 6; return 7;"
             expected =
               Right
-                [ ReturnStatement,
-                  ReturnStatement,
-                  ReturnStatement
+                [ ReturnStatement $ IntegerLiteral 5,
+                  ReturnStatement $ IntegerLiteral 6,
+                  ReturnStatement $ IntegerLiteral 7
                 ]
         parseInput input `shouldBe` expected
       it "missing SEMICOLON" $ do
@@ -350,7 +350,14 @@ parserSpec = do
                       (IntegerLiteral 1)
                       InfixEqualTo
                       (InfixExpression (IntegerLiteral 2) InfixAdd (IntegerLiteral 3)),
-                  ReturnStatement
+                  ReturnStatement $
+                    PrefixExpression
+                      PrefixNegative
+                      ( InfixExpression
+                          (IntegerLiteral 2)
+                          InfixAdd
+                          (IntegerLiteral 2)
+                      )
                 ]
         parseInput input `shouldBe` expected
 

@@ -3,7 +3,6 @@ module Parser.Parser (parseInput) where
 import Common.Trans.State
 import Common.Types
 import Control.Applicative (liftA2)
-import Control.Monad (unless)
 import Lexer.Lexer (nextToken)
 import Lexer.Token
 import Parser.AST
@@ -32,7 +31,7 @@ parseLetStatement =
     <* expectPeekTokenSemicolon
 
 parseReturnStatement :: ParserState Statement
-parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
+parseReturnStatement = ReturnStatement <$> (nextToken >> parseExpression LOWEST) <* expectPeekTokenSemicolon
 
 parseExpressionStatement :: ParserState Statement
 parseExpressionStatement = ExpressionStatement <$> parseExpression LOWEST <* expectPeekTokenSemicolon
@@ -125,13 +124,6 @@ parseBlock = do
 
 parseGroupedExpression :: ParserState Expression
 parseGroupedExpression = parseExpression LOWEST <* expectNextToken RPAREN
-
-advanceToSemicolon :: ParserState ()
-advanceToSemicolon = do
-  peekToken <- peekNextToken
-  if peekToken == EOF
-    then interpreterError MissingSemicolon
-    else unless (peekToken == SEMICOLON) (nextToken >> advanceToSemicolon)
 
 peekNextToken :: ParserState Token
 peekNextToken = do
