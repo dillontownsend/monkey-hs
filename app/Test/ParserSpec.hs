@@ -12,15 +12,15 @@ parserSpec = do
     describe "let statement" $ do
       it "single correct parse" $ do
         let input = "let x = 5;"
-            expected = Right [LetStatement $ Identifier "x"]
+            expected = Right [LetStatement (Identifier "x") (IntegerLiteral 5)]
         parseInput input `shouldBe` expected
       it "multiple correct parse" $ do
         let input = "let x = 5; let y = 5; let z = 5;"
             expected =
               Right
-                [ LetStatement $ Identifier "x",
-                  LetStatement $ Identifier "y",
-                  LetStatement $ Identifier "z"
+                [ LetStatement (Identifier "x") (IntegerLiteral 5),
+                  LetStatement (Identifier "y") (IntegerLiteral 5),
+                  LetStatement (Identifier "z") (IntegerLiteral 5)
                 ]
         parseInput input `shouldBe` expected
       it "missing IDENT" $ do

@@ -24,22 +24,18 @@ parseStatement = do
     _ -> parseExpressionStatement
 
 parseLetStatement :: ParserState Statement
-parseLetStatement = do
-  _letToken <- nextToken
-  ident <- expectIdent
-  expectNextToken ASSIGN
-  advanceToSemicolon >> return (LetStatement $ Identifier ident)
+parseLetStatement =
+  liftA2
+    (LetStatement . Identifier)
+    (nextToken >> expectIdent <* expectNextToken ASSIGN)
+    (parseExpression LOWEST)
+    <* expectPeekTokenSemicolon
 
 parseReturnStatement :: ParserState Statement
 parseReturnStatement = nextToken >> advanceToSemicolon >> return ReturnStatement
 
 parseExpressionStatement :: ParserState Statement
-parseExpressionStatement = do
-  expressionStatement <- ExpressionStatement <$> parseExpression LOWEST
-  peekToken <- peekNextToken
-  if peekToken == SEMICOLON
-    then return expressionStatement
-    else interpreterError MissingSemicolon
+parseExpressionStatement = ExpressionStatement <$> parseExpression LOWEST <* expectPeekTokenSemicolon
 
 parseExpression :: Precedence -> ParserState Expression
 parseExpression leftBindingPower = do
@@ -214,6 +210,13 @@ expectNextToken expectedToken = do
   if token == expectedToken
     then return ()
     else interpreterError $ UnexpectedToken token
+
+expectPeekTokenSemicolon :: ParserState ()
+expectPeekTokenSemicolon = do
+  peekToken <- peekNextToken
+  if peekToken == SEMICOLON
+    then return ()
+    else interpreterError MissingSemicolon
 
 expectIdent :: ParserState String
 expectIdent = do
