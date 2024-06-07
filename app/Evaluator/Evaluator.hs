@@ -1,47 +1,53 @@
 module Evaluator.Evaluator where
 
+import Common.Types
 import Evaluator.Object
 import Parser.AST
 
-evalProgram :: Program -> Object
-evalProgram [] = NullObject
+evalProgram :: Program -> Evaluator Object
+evalProgram [] = return NullObject
 evalProgram [statement] = evalStatement statement
-evalProgram (statement : statements) =
-  case evalStatement statement of
-    returnValue@(ReturnValue _) -> returnValue
+evalProgram (statement : statements) = do
+  object <- evalStatement statement
+  case object of
+    returnValue@(ReturnValue _) -> return returnValue
     _ -> evalProgram statements
 
-evalStatement :: Statement -> Object
+evalStatement :: Statement -> Evaluator Object
 evalStatement (ExpressionStatement expression) = evalExpression expression
-evalStatement (ReturnStatement expression) = ReturnValue $ evalExpression expression
+evalStatement (ReturnStatement expression) = ReturnValue <$> evalExpression expression
 
-evalExpression :: Expression -> Object
-evalExpression (IntegerLiteral int) = IntegerObject int
-evalExpression (BoolLiteral bool) = BooleanObject bool
-evalExpression (PrefixExpression prefixOperator expression) =
-  evalPrefixExpression prefixOperator $ evalExpression expression
-evalExpression (InfixExpression left infixOperator right) =
-  evalInfixExpression (evalExpression left) infixOperator (evalExpression right)
-evalExpression (IfExpression conditionExpression consequence alternative) =
-  case evalExpression conditionExpression of
+evalExpression :: Expression -> Evaluator Object
+evalExpression (IntegerLiteral int) = return $ IntegerObject int
+evalExpression (BoolLiteral bool) = return $ BooleanObject bool
+evalExpression (PrefixExpression prefixOperator expression) = do
+  object <- evalExpression expression
+  evalPrefixExpression prefixOperator object
+evalExpression (InfixExpression left infixOperator right) = do
+  leftObject <- evalExpression left
+  rightObject <- evalExpression right
+  evalInfixExpression leftObject infixOperator rightObject
+evalExpression (IfExpression conditionExpression consequence alternative) = do
+  condition <- evalExpression conditionExpression
+  case condition of
     BooleanObject True -> evalProgram consequence
-    BooleanObject False -> maybe NullObject evalProgram alternative
-    _ -> NullObject -- TODO: type typemismatch
+    BooleanObject False -> maybe (return NullObject) evalProgram alternative
+    _ -> evaluatorError $ IfExpressionTypeMismatch condition
 
-evalPrefixExpression :: PrefixOperator -> Object -> Object
-evalPrefixExpression PrefixNot (BooleanObject bool) = BooleanObject $ not bool
-evalPrefixExpression PrefixNegative (IntegerObject int) = IntegerObject (-int)
-evalPrefixExpression _ _ = NullObject -- TODO: implement type mismatch errors
+evalPrefixExpression :: PrefixOperator -> Object -> Evaluator Object
+evalPrefixExpression PrefixNot (BooleanObject bool) = return $ BooleanObject $ not bool
+evalPrefixExpression PrefixNegative (IntegerObject int) = return $ IntegerObject (-int)
+evalPrefixExpression prefixOperator object = evaluatorError $ PrefixExpressionTypeMismatch prefixOperator object
 
-evalInfixExpression :: Object -> InfixOperator -> Object -> Object
-evalInfixExpression (IntegerObject left) InfixAdd (IntegerObject right) = IntegerObject $ left + right
-evalInfixExpression (IntegerObject left) InfixSubtract (IntegerObject right) = IntegerObject $ left - right
-evalInfixExpression (IntegerObject left) InfixMultiply (IntegerObject right) = IntegerObject $ left * right
-evalInfixExpression (IntegerObject left) InfixDivide (IntegerObject right) = IntegerObject $ left `div` right
-evalInfixExpression (IntegerObject left) InfixGreaterThan (IntegerObject right) = BooleanObject $ left > right
-evalInfixExpression (IntegerObject left) InfixLessThan (IntegerObject right) = BooleanObject $ left < right
-evalInfixExpression (IntegerObject left) InfixEqualTo (IntegerObject right) = BooleanObject $ left == right
-evalInfixExpression (BooleanObject left) InfixEqualTo (BooleanObject right) = BooleanObject $ left == right
-evalInfixExpression (IntegerObject left) InfixNotEqualTo (IntegerObject right) = BooleanObject $ left /= right
-evalInfixExpression (BooleanObject left) InfixNotEqualTo (BooleanObject right) = BooleanObject $ left /= right
-evalInfixExpression _ _ _ = NullObject -- TODO: implement type mismatch errors
+evalInfixExpression :: Object -> InfixOperator -> Object -> Evaluator Object
+evalInfixExpression (IntegerObject left) InfixAdd (IntegerObject right) = return $ IntegerObject $ left + right
+evalInfixExpression (IntegerObject left) InfixSubtract (IntegerObject right) = return $ IntegerObject $ left - right
+evalInfixExpression (IntegerObject left) InfixMultiply (IntegerObject right) = return $ IntegerObject $ left * right
+evalInfixExpression (IntegerObject left) InfixDivide (IntegerObject right) = return $ IntegerObject $ left `div` right
+evalInfixExpression (IntegerObject left) InfixGreaterThan (IntegerObject right) = return $ BooleanObject $ left > right
+evalInfixExpression (IntegerObject left) InfixLessThan (IntegerObject right) = return $ BooleanObject $ left < right
+evalInfixExpression (IntegerObject left) InfixEqualTo (IntegerObject right) = return $ BooleanObject $ left == right
+evalInfixExpression (BooleanObject left) InfixEqualTo (BooleanObject right) = return $ BooleanObject $ left == right
+evalInfixExpression (IntegerObject left) InfixNotEqualTo (IntegerObject right) = return $ BooleanObject $ left /= right
+evalInfixExpression (BooleanObject left) InfixNotEqualTo (BooleanObject right) = return $ BooleanObject $ left /= right
+evalInfixExpression left prefixOperator right = evaluatorError $ InfixExpressionTypeMismatch left prefixOperator right

@@ -34,7 +34,11 @@ type Block = [Statement]
 data PrefixOperator
   = PrefixNot
   | PrefixNegative
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show PrefixOperator where
+  show PrefixNot = "!"
+  show PrefixNegative = "-"
 
 data InfixOperator
   = InfixAdd
@@ -45,7 +49,17 @@ data InfixOperator
   | InfixLessThan
   | InfixEqualTo
   | InfixNotEqualTo
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show InfixOperator where
+  show InfixAdd = "+"
+  show InfixSubtract = "-"
+  show InfixMultiply = "*"
+  show InfixDivide = "-"
+  show InfixGreaterThan = ">"
+  show InfixLessThan = "<"
+  show InfixEqualTo = "=="
+  show InfixNotEqualTo = "!="
 
 data Precedence
   = LOWEST

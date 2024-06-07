@@ -1,8 +1,9 @@
 module Common.Types where
 
 import Common.Trans.State
+import Evaluator.Object
 import Lexer.Token
-import Parser.AST (Program)
+import Parser.AST
 
 type Input = String
 
@@ -28,11 +29,21 @@ instance Show ParserError where
 parserError :: ParserError -> ParserState a
 parserError = lift . Left
 
--- type EvaluatorState a = StateT Program (Either EvaluatorError) a
---
--- data EvaluatorError
---   = TypeMismatch
---   deriving (Eq)
---
--- evaluatorError :: EvaluatorError -> EvaluatorState a
--- evaluatorError = lift . Left
+type Evaluator a = Either EvaluatorError a
+
+data EvaluatorError
+  = PrefixExpressionTypeMismatch PrefixOperator Object
+  | InfixExpressionTypeMismatch Object InfixOperator Object
+  | IfExpressionTypeMismatch Object
+  deriving (Eq)
+
+instance Show EvaluatorError where
+  show (PrefixExpressionTypeMismatch prefixOperator object) =
+    "type mismatch in prefix expression: " ++ show prefixOperator ++ show object
+  show (InfixExpressionTypeMismatch left infixOperator right) =
+    "type mismatch in infix expression : " ++ show left ++ " " ++ show infixOperator ++ " " ++ show right
+  show (IfExpressionTypeMismatch object) =
+    "type mismatch in if expression condition. expected a boolean but got: " ++ show object
+
+evaluatorError :: EvaluatorError -> Evaluator a
+evaluatorError = Left
