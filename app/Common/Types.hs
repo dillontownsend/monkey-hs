@@ -1,6 +1,7 @@
 module Common.Types where
 
 import Common.Trans.State
+import Data.Map (Map)
 import Evaluator.Object
 import Lexer.Token
 import Parser.AST
@@ -29,12 +30,15 @@ instance Show ParserError where
 parserError :: ParserError -> ParserState a
 parserError = lift . Left
 
-type Evaluator a = Either EvaluatorError a
+type Environment = Map String Object
+
+type Evaluator a = StateT Environment (Either EvaluatorError) a
 
 data EvaluatorError
   = PrefixExpressionTypeMismatch PrefixOperator Object
   | InfixExpressionTypeMismatch Object InfixOperator Object
   | IfExpressionTypeMismatch Object
+  | UndefinedVariable String
   deriving (Eq)
 
 instance Show EvaluatorError where
@@ -44,6 +48,7 @@ instance Show EvaluatorError where
     "type mismatch in infix expression : " ++ show left ++ " " ++ show infixOperator ++ " " ++ show right
   show (IfExpressionTypeMismatch object) =
     "type mismatch in if expression condition. expected a boolean but got: " ++ show object
+  show (UndefinedVariable undefinedVariable) = "referenced undefined variable: " ++ undefinedVariable
 
 evaluatorError :: EvaluatorError -> Evaluator a
-evaluatorError = Left
+evaluatorError = lift . Left

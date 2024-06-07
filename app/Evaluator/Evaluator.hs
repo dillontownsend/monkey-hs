@@ -1,6 +1,8 @@
 module Evaluator.Evaluator where
 
+import Common.Trans.State
 import Common.Types
+import qualified Data.Map as Map (insert, lookup)
 import Evaluator.Object
 import Parser.AST
 
@@ -16,6 +18,8 @@ evalProgram (statement : statements) = do
 evalStatement :: Statement -> Evaluator Object
 evalStatement (ExpressionStatement expression) = evalExpression expression
 evalStatement (ReturnStatement expression) = ReturnValue <$> evalExpression expression
+evalStatement (LetStatement (Identifier identifier) expression) =
+  evalExpression expression >>= setInEnvironment identifier >> return NullObject
 
 evalExpression :: Expression -> Evaluator Object
 evalExpression (IntegerLiteral int) = return $ IntegerObject int
@@ -33,6 +37,7 @@ evalExpression (IfExpression conditionExpression consequence alternative) = do
     BooleanObject True -> evalProgram consequence
     BooleanObject False -> maybe (return NullObject) evalProgram alternative
     _ -> evaluatorError $ IfExpressionTypeMismatch condition
+evalExpression (IdentifierExpression (Identifier identifier)) = getFromEnvironment identifier
 
 evalPrefixExpression :: PrefixOperator -> Object -> Evaluator Object
 evalPrefixExpression PrefixNot (BooleanObject bool) = return $ BooleanObject $ not bool
@@ -51,3 +56,11 @@ evalInfixExpression (BooleanObject left) InfixEqualTo (BooleanObject right) = re
 evalInfixExpression (IntegerObject left) InfixNotEqualTo (IntegerObject right) = return $ BooleanObject $ left /= right
 evalInfixExpression (BooleanObject left) InfixNotEqualTo (BooleanObject right) = return $ BooleanObject $ left /= right
 evalInfixExpression left prefixOperator right = evaluatorError $ InfixExpressionTypeMismatch left prefixOperator right
+
+getFromEnvironment :: String -> Evaluator Object
+getFromEnvironment key = do
+  environment <- get
+  maybe (evaluatorError $ UndefinedVariable key) return (Map.lookup key environment)
+
+setInEnvironment :: String -> Object -> Evaluator ()
+setInEnvironment key object = modify $ Map.insert key object

@@ -75,6 +75,9 @@ modify f = do
 evalStateT :: (Monad m) => StateT s m a -> s -> m a
 evalStateT m s = fst <$> runStateT m s
 
+execStateT :: (Monad m) => StateT s m a -> s -> m s
+execStateT m s = snd <$> runStateT m s
+
 runState :: State s a -> (s -> (a, s))
 runState (StateT sa) s = runIdentity $ sa s
 
