@@ -1,6 +1,6 @@
 module Test.EvaluatorSpec where
 
-import Common.Trans.State (evalStateT, execStateT)
+import Common.Trans.State (StateT (runStateT), evalStateT, execStateT)
 import Common.Types (EvaluatorError (InfixExpressionTypeMismatch, PrefixExpressionTypeMismatch))
 import Data.Map (empty, fromList)
 import Evaluator.Evaluator (evalProgram)
@@ -212,4 +212,25 @@ evaluatorSpec = do
             eitherProgram = parseInput input
         case eitherProgram of
           Right program -> execStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "redeclaring in if expression" $ do
+        let input = "let x = 1; if (true) { let x = 2; };"
+            expected = Right $ fromList [("x", IntegerObject 2)]
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> execStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "variable declared in if expression should be visible in outer scope" $ do
+        let input = "if (true) { let y = 10; }; y;"
+            expected = Right (IntegerObject 10, fromList [("y", IntegerObject 10)])
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> runStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "if expression does not overwrite variable if not evaluated" $ do
+        let input = "let x = 1; if (false) { let x = 2; }; x;"
+            expected = Right (IntegerObject 1, fromList [("x", IntegerObject 1)])
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> runStateT (evalProgram program) empty `shouldBe` expected
           Left parserError -> error $ show parserError
