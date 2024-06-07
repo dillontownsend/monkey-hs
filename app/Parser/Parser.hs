@@ -53,14 +53,14 @@ parseNud = do
     LPAREN -> parseGroupedExpression
     IF -> parseIfExpression
     FUNCTION -> parseFunctionLiteral
-    invalidToken -> interpreterError $ InvalidNud invalidToken
+    invalidToken -> parserError $ InvalidNud invalidToken
 
 parseCallExpression :: Expression -> ParserState Expression
 parseCallExpression (FunctionLiteralExpression function) =
   CallExpression (AnonymousFunction function) <$> (nextToken >> parseCallArguments)
 parseCallExpression (IdentifierExpression identifier) =
   CallExpression (NamedFunction identifier) <$> (nextToken >> parseCallArguments)
-parseCallExpression _ = interpreterError $ UnexpectedToken LPAREN
+parseCallExpression _ = parserError $ UnexpectedToken LPAREN
 
 parseCallArguments :: ParserState [Expression]
 parseCallArguments = do
@@ -94,7 +94,7 @@ parseFunctionParameters = do
       if peekToken == COMMA
         then nextToken >> identifiers
         else identifiers
-    unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
+    unexpectedToken -> parserError $ UnexpectedToken unexpectedToken
 
 parseIfExpression :: ParserState Expression
 parseIfExpression = do
@@ -182,7 +182,7 @@ lookupInfixOperator GREATER_THAN = return InfixGreaterThan
 lookupInfixOperator LESS_THAN = return InfixLessThan
 lookupInfixOperator EQUAL_TO = return InfixEqualTo
 lookupInfixOperator NOT_EQUAL_TO = return InfixNotEqualTo
-lookupInfixOperator invalidToken = interpreterError $ NotAnInfixOperator invalidToken
+lookupInfixOperator invalidToken = parserError $ NotAnInfixOperator invalidToken
 
 lookupPrecedence :: Token -> Precedence
 lookupPrecedence EQUAL_TO = EQUALS
@@ -201,21 +201,21 @@ expectNextToken expectedToken = do
   token <- nextToken
   if token == expectedToken
     then return ()
-    else interpreterError $ UnexpectedToken token
+    else parserError $ UnexpectedToken token
 
 expectPeekTokenSemicolon :: ParserState ()
 expectPeekTokenSemicolon = do
   peekToken <- peekNextToken
   if peekToken == SEMICOLON
     then return ()
-    else interpreterError MissingSemicolon
+    else parserError MissingSemicolon
 
 expectIdent :: ParserState String
 expectIdent = do
   token <- nextToken
   case token of
     IDENT ident -> return ident
-    unexpectedToken -> interpreterError $ UnexpectedToken unexpectedToken
+    unexpectedToken -> parserError $ UnexpectedToken unexpectedToken
 
-parseInput :: Input -> Either InterpreterError Program
+parseInput :: Input -> Either ParserError Program
 parseInput = evalStateT parseProgram

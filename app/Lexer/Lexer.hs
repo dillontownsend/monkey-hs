@@ -32,7 +32,7 @@ nextToken = do
       c
         | isLetter c -> readIdent
         | isDigit c -> readInt
-      illegalChar -> interpreterError $ IllegalChar illegalChar
+      illegalChar -> parserError $ IllegalChar illegalChar
 
 isLetter :: Char -> Bool
 isLetter char = isAlpha char || char == '_'
@@ -88,5 +88,5 @@ accumulateTokens = do
     else
       (token :) <$> accumulateTokens
 
-lexInput :: Input -> Either InterpreterError [Token]
+lexInput :: Input -> Either ParserError [Token]
 lexInput = evalStateT accumulateTokens
