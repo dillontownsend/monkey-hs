@@ -7,7 +7,10 @@ data Statement
   deriving (Eq, Show)
 
 newtype Identifier = Identifier String
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show Identifier where
+  show (Identifier identifier) = identifier
 
 data Expression
   = IdentifierExpression Identifier

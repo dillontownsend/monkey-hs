@@ -1,3 +1,5 @@
-let dillon = 23;
-
-return dillon;
+return fn(x) {
+  fn(y) {
+    x + y;
+  };
+}(2);

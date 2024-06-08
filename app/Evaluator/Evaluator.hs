@@ -2,6 +2,7 @@ module Evaluator.Evaluator where
 
 import Common.Trans.State
 import Common.Types
+import Data.Map (union)
 import qualified Data.Map as Map (insert, lookup)
 import Evaluator.Object
 import Parser.AST
@@ -38,6 +39,38 @@ evalExpression (IfExpression conditionExpression consequence alternative) = do
     BooleanObject False -> maybe (return NullObject) evalProgram alternative
     _ -> evaluatorError $ IfExpressionTypeMismatch condition
 evalExpression (IdentifierExpression (Identifier identifier)) = getFromEnvironment identifier
+evalExpression (FunctionLiteralExpression (FunctionLiteral identifiers block)) = FunctionObject identifiers block <$> get
+evalExpression (CallExpression (NamedFunction (Identifier identifier)) expressions) = do
+  object <- getFromEnvironment identifier
+  case object of
+    FunctionObject identifiers block environment -> do
+      currentEnvironment <- get
+      put $ union environment currentEnvironment
+      assignArgumentsToEnvironment identifiers expressions
+      innerObject <- evalProgram block
+      put currentEnvironment
+      return innerObject
+    anyOtherObject -> evaluatorError $ NotAFunction anyOtherObject
+evalExpression (CallExpression (AnonymousFunction (FunctionLiteral identifiers block)) expressions) = do
+  currentEnvironment <- get
+  assignArgumentsToEnvironment identifiers expressions
+  innerObject <- evalProgram block
+  put currentEnvironment
+  return innerObject
+
+assignArgumentsToEnvironment :: [Identifier] -> [Expression] -> Evaluator ()
+assignArgumentsToEnvironment parameters expressions
+  | numberOfParameters /= numberOfExpressions =
+      evaluatorError $ IncorrectNumberOfArguments numberOfParameters numberOfExpressions
+  where
+    numberOfParameters = length parameters
+    numberOfExpressions = length expressions
+assignArgumentsToEnvironment [] [] = return ()
+assignArgumentsToEnvironment ((Identifier key) : parameters) (expression : expressions) = do
+  object <- evalExpression expression
+  setInEnvironment key object
+  assignArgumentsToEnvironment parameters expressions
+assignArgumentsToEnvironment _ _ = error "unreachable pattern"
 
 evalPrefixExpression :: PrefixOperator -> Object -> Evaluator Object
 evalPrefixExpression PrefixNot (BooleanObject bool) = return $ BooleanObject $ not bool

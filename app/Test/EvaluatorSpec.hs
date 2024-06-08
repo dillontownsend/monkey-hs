@@ -5,7 +5,7 @@ import Common.Types (EvaluatorError (InfixExpressionTypeMismatch, PrefixExpressi
 import Data.Map (empty, fromList)
 import Evaluator.Evaluator (evalProgram)
 import Evaluator.Object
-import Parser.AST (InfixOperator (InfixAdd), PrefixOperator (PrefixNegative))
+import Parser.AST
 import Parser.Parser (parseInput)
 import Test.Hspec
 
@@ -230,6 +230,101 @@ evaluatorSpec = do
       it "if expression does not overwrite variable if not evaluated" $ do
         let input = "let x = 1; if (false) { let x = 2; }; x;"
             expected = Right (IntegerObject 1, fromList [("x", IntegerObject 1)])
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> runStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+
+    describe "functions and function calls" $ do
+      it "function object" $ do
+        let input = "fn(x) { x + 2; };"
+            expected =
+              Right $
+                FunctionObject
+                  [Identifier "x"]
+                  [ ExpressionStatement $
+                      InfixExpression
+                        (IdentifierExpression $ Identifier "x")
+                        InfixAdd
+                        (IntegerLiteral 2)
+                  ]
+                  empty
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "identity function" $ do
+        let input = "let identity = fn(x) { x; }; identity(5);"
+            expected =
+              Right $ IntegerObject 5
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "identity function with explicit return" $ do
+        let input = "let identity = fn(x) { return x; }; identity(5);"
+            expected =
+              Right $ ReturnValue $ IntegerObject 5
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "double function" $ do
+        let input = "let double = fn(x) { x * 2; }; double(5);"
+            expected =
+              Right $ IntegerObject 10
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "add function" $ do
+        let input = "let add = fn(x, y) { x + y; }; add(1, 2);"
+            expected =
+              Right $ IntegerObject 3
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "add function with function call arg" $ do
+        let input = "let add = fn(x, y) { x + y; }; add(1, add(2, 2));"
+            expected =
+              Right $ IntegerObject 5
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "anonymous identity function call" $ do
+        let input = "fn(x) { x; }(5);"
+            expected =
+              Right $ IntegerObject 5
+            eitherProgram = parseInput input
+        case eitherProgram of
+          Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
+          Left parserError -> error $ show parserError
+      it "curried add" $ do
+        let input = "let curried_add = fn(x) { fn(y) { x + y; }; }; let add_two = curried_add(2); add_two(5);"
+            expected =
+              Right
+                ( IntegerObject 7,
+                  fromList
+                    [ ( "curried_add",
+                        FunctionObject
+                          [Identifier "x"]
+                          [ ExpressionStatement $
+                              FunctionLiteralExpression $
+                                FunctionLiteral
+                                  [Identifier "y"]
+                                  [ ExpressionStatement $
+                                      InfixExpression
+                                        (IdentifierExpression $ Identifier "x")
+                                        InfixAdd
+                                        (IdentifierExpression $ Identifier "y")
+                                  ]
+                          ]
+                          empty
+                      )
+                    ]
+                )
             eitherProgram = parseInput input
         case eitherProgram of
           Right program -> runStateT (evalProgram program) empty `shouldBe` expected
