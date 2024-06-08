@@ -301,7 +301,7 @@ evaluatorSpec = do
         case eitherProgram of
           Right program -> evalStateT (evalProgram program) empty `shouldBe` expected
           Left parserError -> error $ show parserError
-      it "curried add" $ do
+      it "curried function environment management" $ do
         let input = "let curried_add = fn(x) { fn(y) { x + y; }; }; let add_two = curried_add(2); add_two(5);"
             expected =
               Right
@@ -322,6 +322,36 @@ evaluatorSpec = do
                                   ]
                           ]
                           empty
+                      ),
+                      ( "add_two",
+                        FunctionObject
+                          [Identifier "y"]
+                          [ ExpressionStatement $
+                              InfixExpression
+                                (IdentifierExpression $ Identifier "x")
+                                InfixAdd
+                                (IdentifierExpression $ Identifier "y")
+                          ]
+                          ( fromList
+                              [ ("x", IntegerObject 2),
+                                ( "curried_add",
+                                  FunctionObject
+                                    [Identifier "x"]
+                                    [ ExpressionStatement $
+                                        FunctionLiteralExpression $
+                                          FunctionLiteral
+                                            [Identifier "y"]
+                                            [ ExpressionStatement $
+                                                InfixExpression
+                                                  (IdentifierExpression $ Identifier "x")
+                                                  InfixAdd
+                                                  (IdentifierExpression $ Identifier "y")
+                                            ]
+                                    ]
+                                    empty
+                                )
+                              ]
+                          )
                       )
                     ]
                 )

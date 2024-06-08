@@ -5,10 +5,10 @@ import Common.Types
 import Data.Char (isAlpha, isDigit)
 import Lexer.Token
 
-advance :: ParserState ()
+advance :: Parser ()
 advance = modify tail
 
-nextToken :: ParserState Token
+nextToken :: Parser Token
 nextToken = do
   modify skipWhiteSpace
   input <- get
@@ -37,10 +37,10 @@ nextToken = do
 isLetter :: Char -> Bool
 isLetter char = isAlpha char || char == '_'
 
-readSingleChar :: Token -> ParserState Token
+readSingleChar :: Token -> Parser Token
 readSingleChar = (advance >>) . return
 
-readPeekEquals :: Token -> Token -> ParserState Token
+readPeekEquals :: Token -> Token -> Parser Token
 readPeekEquals tokenIfTrue tokenIfFalse = do
   advance
   input <- get
@@ -48,10 +48,10 @@ readPeekEquals tokenIfTrue tokenIfFalse = do
     then advance >> return tokenIfTrue
     else return tokenIfFalse
 
-readInt :: ParserState Token
+readInt :: Parser Token
 readInt = INT . read <$> seek isDigit
 
-readIdent :: ParserState Token
+readIdent :: Parser Token
 readIdent = do
   ident <- seek isLetter
   return
@@ -66,7 +66,7 @@ readIdent = do
         _ -> IDENT ident
     )
 
-seek :: (Char -> Bool) -> ParserState Input
+seek :: (Char -> Bool) -> Parser Input
 seek predicate = do
   input <- get
   let currentChar = head input
@@ -80,7 +80,7 @@ skipWhiteSpace input@(c : cs)
   | c == ' ' || c == '\t' || c == '\r' || c == '\n' = skipWhiteSpace cs
   | otherwise = input
 
-accumulateTokens :: ParserState [Token]
+accumulateTokens :: Parser [Token]
 accumulateTokens = do
   token <- nextToken
   if token == EOF

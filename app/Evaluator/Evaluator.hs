@@ -2,8 +2,7 @@ module Evaluator.Evaluator where
 
 import Common.Trans.State
 import Common.Types
-import Data.Map (union)
-import qualified Data.Map as Map (insert, lookup)
+import qualified Data.Map as Map (insert, lookup, union)
 import Evaluator.Object
 import Parser.AST
 
@@ -25,9 +24,7 @@ evalStatement (LetStatement (Identifier identifier) expression) =
 evalExpression :: Expression -> Evaluator Object
 evalExpression (IntegerLiteral int) = return $ IntegerObject int
 evalExpression (BoolLiteral bool) = return $ BooleanObject bool
-evalExpression (PrefixExpression prefixOperator expression) = do
-  object <- evalExpression expression
-  evalPrefixExpression prefixOperator object
+evalExpression (PrefixExpression prefixOperator expression) = evalExpression expression >>= evalPrefixExpression prefixOperator
 evalExpression (InfixExpression left infixOperator right) = do
   leftObject <- evalExpression left
   rightObject <- evalExpression right
@@ -45,7 +42,7 @@ evalExpression (CallExpression (NamedFunction (Identifier identifier)) expressio
   case object of
     FunctionObject identifiers block environment -> do
       currentEnvironment <- get
-      put $ union environment currentEnvironment
+      put $ Map.union environment currentEnvironment
       assignArgumentsToEnvironment identifiers expressions
       innerObject <- evalProgram block
       put currentEnvironment
@@ -60,16 +57,14 @@ evalExpression (CallExpression (AnonymousFunction (FunctionLiteral identifiers b
 
 assignArgumentsToEnvironment :: [Identifier] -> [Expression] -> Evaluator ()
 assignArgumentsToEnvironment parameters expressions
-  | numberOfParameters /= numberOfExpressions =
-      evaluatorError $ IncorrectNumberOfArguments numberOfParameters numberOfExpressions
+  | numberOfParameters /= numberOfArguments =
+      evaluatorError $ IncorrectNumberOfArguments numberOfParameters numberOfArguments
   where
     numberOfParameters = length parameters
-    numberOfExpressions = length expressions
+    numberOfArguments = length expressions
 assignArgumentsToEnvironment [] [] = return ()
-assignArgumentsToEnvironment ((Identifier key) : parameters) (expression : expressions) = do
-  object <- evalExpression expression
-  setInEnvironment key object
-  assignArgumentsToEnvironment parameters expressions
+assignArgumentsToEnvironment ((Identifier key) : parameters) (argument : arguments) =
+  evalExpression argument >>= setInEnvironment key >> assignArgumentsToEnvironment parameters arguments
 assignArgumentsToEnvironment _ _ = error "unreachable pattern"
 
 evalPrefixExpression :: PrefixOperator -> Object -> Evaluator Object

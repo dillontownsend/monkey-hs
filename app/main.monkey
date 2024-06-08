@@ -1,5 +1,13 @@
-return fn(x) {
-  fn(y) {
-    x + y;
+let perform = fn(f, x) {
+  f(x);
+};
+
+let curried_add = fn(y) {
+  fn (z) {
+    y + z;
   };
-}(2);
+};
+
+let add_two = curried_add(2);
+
+perform(add_two, 5);

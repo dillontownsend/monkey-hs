@@ -9,7 +9,7 @@ type Input = String
 
 type LexerState a = State Input a
 
-type ParserState a = StateT Input (Either ParserError) a
+type Parser a = StateT Input (Either ParserError) a
 
 data ParserError
   = IllegalChar Char
@@ -26,7 +26,7 @@ instance Show ParserError where
   show (NotAnInfixOperator token) = "expected a semicolon but instead recieved: " ++ show token
   show MissingSemicolon = "missing a semicolon"
 
-parserError :: ParserError -> ParserState a
+parserError :: ParserError -> Parser a
 parserError = lift . Left
 
 type Evaluator a = StateT Environment (Either EvaluatorError) a

@@ -7,14 +7,14 @@ import Lexer.Lexer (nextToken)
 import Lexer.Token
 import Parser.AST
 
-parseProgram :: ParserState Program
+parseProgram :: Parser Program
 parseProgram = do
   peekToken <- peekNextToken
   if peekToken == EOF
     then return []
     else liftA2 (:) (parseStatement <* nextToken) parseProgram
 
-parseStatement :: ParserState Statement
+parseStatement :: Parser Statement
 parseStatement = do
   peekToken <- peekNextToken
   case peekToken of
@@ -22,7 +22,7 @@ parseStatement = do
     RETURN -> parseReturnStatement
     _ -> parseExpressionStatement
 
-parseLetStatement :: ParserState Statement
+parseLetStatement :: Parser Statement
 parseLetStatement =
   liftA2
     (LetStatement . Identifier)
@@ -30,18 +30,18 @@ parseLetStatement =
     (parseExpression LOWEST)
     <* expectPeekTokenSemicolon
 
-parseReturnStatement :: ParserState Statement
+parseReturnStatement :: Parser Statement
 parseReturnStatement = ReturnStatement <$> (nextToken >> parseExpression LOWEST) <* expectPeekTokenSemicolon
 
-parseExpressionStatement :: ParserState Statement
+parseExpressionStatement :: Parser Statement
 parseExpressionStatement = ExpressionStatement <$> parseExpression LOWEST <* expectPeekTokenSemicolon
 
-parseExpression :: Precedence -> ParserState Expression
+parseExpression :: Precedence -> Parser Expression
 parseExpression leftBindingPower = do
   nud <- parseNud
   parseLed nud leftBindingPower
 
-parseNud :: ParserState Expression
+parseNud :: Parser Expression
 parseNud = do
   token <- nextToken
   case token of
@@ -55,14 +55,14 @@ parseNud = do
     FUNCTION -> parseFunctionLiteral
     invalidToken -> parserError $ InvalidNud invalidToken
 
-parseCallExpression :: Expression -> ParserState Expression
+parseCallExpression :: Expression -> Parser Expression
 parseCallExpression (FunctionLiteralExpression function) =
   CallExpression (AnonymousFunction function) <$> (nextToken >> parseCallArguments)
 parseCallExpression (IdentifierExpression identifier) =
   CallExpression (NamedFunction identifier) <$> (nextToken >> parseCallArguments)
 parseCallExpression _ = parserError $ UnexpectedToken LPAREN
 
-parseCallArguments :: ParserState [Expression]
+parseCallArguments :: Parser [Expression]
 parseCallArguments = do
   peekToken <- peekNextToken
   if peekToken == RPAREN
@@ -74,7 +74,7 @@ parseCallArguments = do
         then nextToken >> expressions
         else expressions
 
-parseFunctionLiteral :: ParserState Expression
+parseFunctionLiteral :: Parser Expression
 parseFunctionLiteral = do
   expectNextToken LPAREN
   parameters <- parseFunctionParameters
@@ -83,7 +83,7 @@ parseFunctionLiteral = do
   expectNextToken RBRACE
   return $ FunctionLiteralExpression $ FunctionLiteral parameters body
 
-parseFunctionParameters :: ParserState [Identifier]
+parseFunctionParameters :: Parser [Identifier]
 parseFunctionParameters = do
   token <- nextToken
   case token of
@@ -96,7 +96,7 @@ parseFunctionParameters = do
         else identifiers
     unexpectedToken -> parserError $ UnexpectedToken unexpectedToken
 
-parseIfExpression :: ParserState Expression
+parseIfExpression :: Parser Expression
 parseIfExpression = do
   expectNextToken LPAREN
   condition <- parseExpression LOWEST
@@ -115,24 +115,24 @@ parseIfExpression = do
       return $ ifExpressionBeforeConsequence $ Just alternative
     else return $ ifExpressionBeforeConsequence Nothing
 
-parseBlock :: ParserState Block
+parseBlock :: Parser Block
 parseBlock = do
   peekToken <- peekNextToken
   if peekToken /= RBRACE && peekToken /= EOF
     then liftA2 (:) (parseStatement <* nextToken) parseBlock
     else return []
 
-parseGroupedExpression :: ParserState Expression
+parseGroupedExpression :: Parser Expression
 parseGroupedExpression = parseExpression LOWEST <* expectNextToken RPAREN
 
-peekNextToken :: ParserState Token
+peekNextToken :: Parser Token
 peekNextToken = do
   currentInput <- get
   token <- nextToken
   put currentInput
   return token
 
-peekNextToken2 :: ParserState Token
+peekNextToken2 :: Parser Token
 peekNextToken2 = do
   currentInput <- get
   _token1 <- nextToken
@@ -140,7 +140,7 @@ peekNextToken2 = do
   put currentInput
   return token2
 
-parseLed :: Expression -> Precedence -> ParserState Expression
+parseLed :: Expression -> Precedence -> Parser Expression
 parseLed leftExpression leftBindingPower = do
   peekToken <- peekNextToken
   let rightBindingPower = lookupPrecedence peekToken
@@ -153,7 +153,7 @@ parseLed leftExpression leftBindingPower = do
         parseLed advancedLeftExpression leftBindingPower
     else return leftExpression
 
-parseInfixExpression :: Expression -> ParserState Expression
+parseInfixExpression :: Expression -> Parser Expression
 parseInfixExpression leftExpression = do
   operatorToken <- nextToken
   liftA2
@@ -161,7 +161,7 @@ parseInfixExpression leftExpression = do
     (lookupInfixOperator operatorToken)
     (parseExpression $ lookupPrecedence operatorToken)
 
-lookupInfixParseFunction :: Token -> Maybe (Expression -> ParserState Expression)
+lookupInfixParseFunction :: Token -> Maybe (Expression -> Parser Expression)
 lookupInfixParseFunction PLUS = Just parseInfixExpression
 lookupInfixParseFunction MINUS = Just parseInfixExpression
 lookupInfixParseFunction SLASH = Just parseInfixExpression
@@ -173,7 +173,7 @@ lookupInfixParseFunction GREATER_THAN = Just parseInfixExpression
 lookupInfixParseFunction LPAREN = Just parseCallExpression
 lookupInfixParseFunction _ = Nothing
 
-lookupInfixOperator :: Token -> ParserState InfixOperator
+lookupInfixOperator :: Token -> Parser InfixOperator
 lookupInfixOperator PLUS = return InfixAdd
 lookupInfixOperator MINUS = return InfixSubtract
 lookupInfixOperator ASTERISK = return InfixMultiply
@@ -196,21 +196,21 @@ lookupPrecedence ASTERISK = PRODUCT
 lookupPrecedence LPAREN = CALL
 lookupPrecedence _ = LOWEST
 
-expectNextToken :: Token -> ParserState ()
+expectNextToken :: Token -> Parser ()
 expectNextToken expectedToken = do
   token <- nextToken
   if token == expectedToken
     then return ()
     else parserError $ UnexpectedToken token
 
-expectPeekTokenSemicolon :: ParserState ()
+expectPeekTokenSemicolon :: Parser ()
 expectPeekTokenSemicolon = do
   peekToken <- peekNextToken
   if peekToken == SEMICOLON
     then return ()
     else parserError MissingSemicolon
 
-expectIdent :: ParserState String
+expectIdent :: Parser String
 expectIdent = do
   token <- nextToken
   case token of
