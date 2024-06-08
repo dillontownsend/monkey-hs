@@ -44,7 +44,7 @@ instance Show EvaluatorError where
   show (PrefixExpressionTypeMismatch prefixOperator object) =
     "type mismatch in prefix expression: " ++ show prefixOperator ++ show object
   show (InfixExpressionTypeMismatch left infixOperator right) =
-    "type mismatch in infix expression : " ++ show left ++ " " ++ show infixOperator ++ " " ++ show right
+    "type mismatch in infix expression: " ++ show left ++ " " ++ show infixOperator ++ " " ++ show right
   show (IfExpressionTypeMismatch object) =
     "type mismatch in if expression condition. expected a boolean but got: " ++ show object
   show (UndefinedVariable undefinedVariable) = "referenced undefined variable: " ++ undefinedVariable

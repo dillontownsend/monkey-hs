@@ -53,7 +53,7 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
-executable monkey-hs
+executable monkey
     -- Import common warning flags.
     import:           warnings
 
@@ -67,7 +67,7 @@ executable monkey-hs
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1, hspec, containers
+    build-depends:    base ^>=4.17.2.1, hspec, containers, filepath, directory
 
     -- Directories containing source files.
     hs-source-dirs:   app
